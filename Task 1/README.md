@@ -1,4 +1,4 @@
-# Task 1 — Disaster Emergency Simulation System (Fire + Rescue + Weather Visualization)
+# Task 1 — Disaster Emergency Simulation System 
 
 ## Background & Goal
 This project simulates an urban fire emergency scenario in Python. Using Object-Oriented Programming (OOP), it models interactions among fire spread, smoke impact, rescue dispatch, traffic response, and weather effects. A 2D visualization (planned with pygame) will be used to present the simulation process clearly.
