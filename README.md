@@ -2,7 +2,7 @@
 
 This repository is the **pre-submission** for Group 36.  
 It contains **Task 1** and **Task 2** in separate folders, as required. Each task folder includes:
-- a **preliminary code submission** (Python), and
+- a **preliminary code submission** , and
 - a **README.md** describing the task scope and plan.
 
 ## Repository Structure
