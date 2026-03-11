@@ -7,7 +7,7 @@ Run with:
 
 Architecture (4 layers):
   core/       — domain: World, entities, simulation, events, pathfinding
-  render/     — camera, theme, renderer
+  render/     — camera, theme, renderer, particles
   ui/         — panels, overlays (pure pygame, no pygame_gui)
   main.py     — wires everything together
 """
@@ -20,7 +20,7 @@ from typing import Optional
 import pygame
 
 from task1_oop_application.src.core.simulation import Simulation
-from task1_oop_application.src.core.world import CellType
+from task1_oop_application.src.core.world import CellType, BURNABLE_TYPES
 from task1_oop_application.src.render.camera import Camera
 from task1_oop_application.src.render.renderer import Renderer
 from task1_oop_application.src.render import theme
@@ -33,22 +33,22 @@ from task1_oop_application.src.ui.panels import (
 # ------------------------------------------------------------------
 # Layout constants
 # ------------------------------------------------------------------
-WINDOW_W = 1280
-WINDOW_H = 760
+WINDOW_W = 1920
+WINDOW_H = 1080
 
-TOP_H    = TopBar.HEIGHT          # 40
-BOTTOM_H = BottomPanel.HEIGHT     # 120
-LEFT_W   = LeftPanel.WIDTH        # 220
-RIGHT_W  = RightPanel.WIDTH       # 220
+TOP_H    = TopBar.HEIGHT          # 56
+BOTTOM_H = BottomPanel.HEIGHT     # 200
+LEFT_W   = LeftPanel.WIDTH        # 300
+RIGHT_W  = RightPanel.WIDTH       # 340
 
 MAP_X = LEFT_W
 MAP_Y = TOP_H
-MAP_W = WINDOW_W - LEFT_W - RIGHT_W   # 840
-MAP_H = WINDOW_H - TOP_H - BOTTOM_H   # 600
+MAP_W = WINDOW_W - LEFT_W - RIGHT_W   # 1280
+MAP_H = WINDOW_H - TOP_H - BOTTOM_H   # 824
 
-CELL_SIZE = 20
-GRID_W = MAP_W // CELL_SIZE   # 42
-GRID_H = MAP_H // CELL_SIZE   # 30
+CELL_SIZE = 16
+GRID_W = MAP_W // CELL_SIZE   # 80
+GRID_H = MAP_H // CELL_SIZE   # 51
 
 
 # ------------------------------------------------------------------
@@ -126,8 +126,8 @@ def main() -> int:
                         cell = sim.world.get_cell(gx, gy)
                         if cell:
                             renderer.selected_cell = (gx, gy)
-                            # Left-clicking a building ignites it
-                            if cell.type == CellType.BUILDING and not cell.burning:
+                            # Left-clicking a burnable cell ignites it
+                            if cell.type in BURNABLE_TYPES and not cell.burning:
                                 sim.start_fire(gx, gy)
 
                     # Always pass click to left panel (handles buttons in sidebar)
@@ -149,16 +149,13 @@ def main() -> int:
                     camera.update_drag(event.pos)
                 left_panel.handle_event(event)
 
-        # Also handle left-panel hover/click when button is not over map
-        # (already handled above; pass motion events for hover highlight)
-
         # ── Simulation tick ──────────────────────────────────────
         sim.update(dt)
 
         # ── Draw ─────────────────────────────────────────────────
         screen.fill(theme.BG_DARK)
 
-        renderer.draw(sim)
+        renderer.draw(sim, dt)
 
         top_bar.draw(
             screen,
@@ -198,6 +195,7 @@ def _handle_action(
         sim.reset()
         camera.center_on(sim.world_width, sim.world_height)
         renderer.selected_cell = None
+        renderer.clear_cache()
     elif action == "demo":
         if not sim.running:
             sim.start()

@@ -7,10 +7,11 @@ Pure domain logic — no pygame imports.
 """
 from __future__ import annotations
 
+import math
 import random
 from typing import Callable, List, Optional, Tuple
 
-from task1_oop_application.src.core.world import World, CellType
+from task1_oop_application.src.core.world import World, CellType, BURNABLE_TYPES
 from task1_oop_application.src.core.entities import FireStation, FireTruck, TruckState
 from task1_oop_application.src.core.events import SimEvent, EventType, Severity
 from task1_oop_application.src.core.pathfinding import astar, nearest_road
@@ -19,16 +20,21 @@ from task1_oop_application.src.core.pathfinding import astar, nearest_road
 # Named constants for simulation tuning
 _SPREAD_NORMALIZE: float = 60.0   # converts per-second probability to per-frame (at ~60 ticks/s)
 
+_FOUR_DIRECTIONS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 _EIGHT_DIRECTIONS = (
     (-1,  0), (1,  0), (0, -1), (0,  1),
     (-1, -1), (-1, 1), (1, -1), (1,  1),
 )
+
 WEATHER_SPREAD_MULT = {
     "sun":  1.0,
     "rain": 0.25,
     "wind": 2.8,
     "snow": 0.45,
 }
+
+# Wind rotation speed: degrees per second
+WIND_ROTATION_SPEED: float = 8.0
 
 
 class Simulation:
@@ -62,6 +68,10 @@ class Simulation:
         self.sim_time: float = 0.0
         self.weather: str = "sun"
         self.speed_mult: float = 1.0
+
+        # Wind direction: angle in degrees (0=East, 90=North, 180=West, 270=South)
+        self.wind_angle: float = 45.0   # start blowing northeast
+        self.wind_speed: float = 1.0    # 0.0–2.0 relative speed
 
         self.active_fires_history: List[int] = [0] * 10  # pre-fill so chart renders immediately
         self._history_timer: float = 0.0
@@ -115,6 +125,7 @@ class Simulation:
     def reset(self) -> None:
         self.running = False
         self.sim_time = 0.0
+        self.wind_angle = 45.0
         self.world = World(self.world_width, self.world_height, self.seed)
         self._rng = random.Random(self.seed + 1)
         self.active_fires_history = [0] * 10
@@ -135,12 +146,11 @@ class Simulation:
         for x in range(self.world_width):
             for y in range(self.world_height):
                 c = self.world.get_cell(x, y)
-                if c and c.type == CellType.BUILDING and not c.burning:
+                if c and c.type in BURNABLE_TYPES and not c.burning:
                     buildings.append((x, y))
 
         self._rng.shuffle(buildings)
         started = 0
-        # Spread fires across the grid by filtering on distance
         last_fire: Optional[Tuple[int, int]] = None
         for bx, by in buildings:
             if last_fire and abs(bx - last_fire[0]) + abs(by - last_fire[1]) < 8:
@@ -156,9 +166,9 @@ class Simulation:
     # ------------------------------------------------------------------
 
     def start_fire(self, gx: int, gy: int) -> bool:
-        """Ignite a building cell. Returns True if successful."""
+        """Ignite a burnable cell. Returns True if successful."""
         cell = self.world.get_cell(gx, gy)
-        if cell and cell.type == CellType.BUILDING and not cell.burning:
+        if cell and cell.type in BURNABLE_TYPES and not cell.burning:
             cell.burning = True
             cell.fire_intensity = 0.3
             self._emit(SimEvent(
@@ -217,6 +227,9 @@ class Simulation:
         eff_dt = dt * self.speed_mult
         self.sim_time += eff_dt
 
+        # Rotate wind direction slowly
+        self.wind_angle = (self.wind_angle + WIND_ROTATION_SPEED * eff_dt) % 360.0
+
         self._update_fire(eff_dt)
         self._update_trucks(eff_dt)
         self._auto_dispatch()
@@ -228,6 +241,11 @@ class Simulation:
 
     def _update_fire(self, dt: float) -> None:
         spread_mult = WEATHER_SPREAD_MULT.get(self.weather, 1.0)
+
+        # Wind direction vector (in grid space, positive Y = down)
+        wind_rad = math.radians(self.wind_angle)
+        wind_dx = math.cos(wind_rad)    # positive = east
+        wind_dy = -math.sin(wind_rad)   # positive = south (screen-down)
 
         burning = self.world.get_burning_cells()
 
@@ -241,16 +259,20 @@ class Simulation:
         for cell in burning:
             prob = cell.fire_intensity * self.FIRE_SPREAD_CHANCE * spread_mult
             if self._rng.random() < prob * _SPREAD_NORMALIZE * dt:
-                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                for dx, dy in _FOUR_DIRECTIONS:
                     nx, ny = cell.gx + dx, cell.gy + dy
                     nb = self.world.get_cell(nx, ny)
                     if (
                         nb
-                        and nb.type == CellType.BUILDING
+                        and nb.type in BURNABLE_TYPES
                         and not nb.burning
-                        and self._rng.random() < 0.35
                     ):
-                        new_fires.append((nx, ny))
+                        # Wind bias: dot product with wind direction
+                        dot = dx * wind_dx + dy * wind_dy
+                        wind_bonus = max(0.0, dot * 0.6)   # 0–0.6 extra factor
+                        spread_p = 0.35 + wind_bonus
+                        if self._rng.random() < spread_p:
+                            new_fires.append((nx, ny))
 
         for fx, fy in new_fires:
             c = self.world.get_cell(fx, fy)
