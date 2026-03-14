@@ -5,8 +5,8 @@ UI layer: all panels rendered with pure pygame (no pygame_gui).
 Panels:
   TopBar       — title, sim-time, state, FPS, weather
   LeftPanel    — simulation controls (start/pause/reset/demo), speed, weather,
-                 live stats, hotkey hints
-  RightPanel   — selected-cell inspector + mini line-chart (active fires)
+                 live stats, map legend
+  RightPanel   — selected-cell inspector + unit list + mini line-chart
   BottomPanel  — color-coded event log
   HelpOverlay  — modal help overlay (F1)
   StatsOverlay — small stats HUD (F2)
@@ -30,14 +30,25 @@ SPEEDS = [("1x", 1.0), ("2x", 2.0), ("4x", 4.0), ("8x", 8.0)]
 WEATHERS = ["sun", "rain", "wind", "snow"]
 
 # Weather display labels
-WEATHER_LABELS = {"sun": "☀ Sun", "rain": "☂ Rain", "wind": "~ Wind", "snow": "* Snow"}
+WEATHER_LABELS = {"sun": "Sun", "rain": "Rain", "wind": "Wind", "snow": "Snow"}
+
+# Legend entries: (label, color)
+LEGEND: List[Tuple[str, Tuple[int, int, int]]] = [
+    ("Road",         theme.COLOR_ROAD),
+    ("Residential",  theme.COLOR_BUILDING),
+    ("Commercial",   theme.COLOR_COMMERCIAL),
+    ("Park",         theme.COLOR_PARK),
+    ("Fire Station", theme.COLOR_STATION),
+    ("Water",        theme.COLOR_WATER),
+    ("Fire",         theme.FIRE_COLORS[2]),
+]
 
 
 # ======================================================================
 # Helper: Button
 # ======================================================================
 
-HOVER_BRIGHTNESS_DELTA = 25  # how much brighter a button gets on hover
+HOVER_BRIGHTNESS_DELTA = 40   # buttons become noticeably brighter on hover
 
 
 class Button:
@@ -57,12 +68,15 @@ class Button:
         self.color = color
         self.text_color = text_color
         self.hovered = False
-        self._font = theme.get_font(19)
+        self._font = theme.get_font(20)
 
     def draw(self, surface: pygame.Surface) -> None:
-        col = tuple(min(255, c + HOVER_BRIGHTNESS_DELTA) for c in self.color) if self.hovered else self.color
-        pygame.draw.rect(surface, col, self.rect, border_radius=4)
-        pygame.draw.rect(surface, theme.PANEL_BORDER, self.rect, 1, border_radius=4)
+        col = (
+            tuple(min(255, c + HOVER_BRIGHTNESS_DELTA) for c in self.color)
+            if self.hovered else self.color
+        )
+        pygame.draw.rect(surface, col, self.rect, border_radius=5)
+        pygame.draw.rect(surface, theme.PANEL_BORDER, self.rect, 1, border_radius=5)
         surf = self._font.render(self.text, True, self.text_color)
         surface.blit(surf, surf.get_rect(center=self.rect.center))
 
@@ -86,8 +100,8 @@ class TopBar:
 
     def __init__(self, window_width: int) -> None:
         self.rect = pygame.Rect(0, 0, window_width, self.HEIGHT)
-        self._f_title = theme.get_font(22)
-        self._f_info  = theme.get_font(18)
+        self._f_title = theme.get_font(24)
+        self._f_info  = theme.get_font(19)
 
     def draw(
         self,
@@ -102,36 +116,36 @@ class TopBar:
 
         # Title
         theme.draw_text(surface, "DISASTER RESPONSE SIMULATOR",
-                        self._f_title, theme.ACCENT_BLUE, 12, 10)
+                        self._f_title, theme.ACCENT_BLUE, 12, 8)
 
         # Sim time
         mm, ss = int(sim_time // 60), int(sim_time % 60)
         theme.draw_text(surface, f"T+{mm:02d}:{ss:02d}",
-                        self._f_info, theme.TEXT_PRIMARY, 395, 12)
+                        self._f_info, theme.TEXT_PRIMARY, 390, 11)
 
         # State
         s_col = theme.ACCENT_GREEN if state == "running" else theme.TEXT_SECONDARY
         theme.draw_text(surface, f"[{state.upper()}]",
-                        self._f_info, s_col, 470, 12)
+                        self._f_info, s_col, 468, 11)
 
         # Weather
         theme.draw_text(surface, WEATHER_LABELS.get(weather, weather),
-                        self._f_info, theme.TEXT_SECONDARY, 580, 12)
+                        self._f_info, theme.TEXT_SECONDARY, 560, 11)
 
         # FPS
         fps_col = (theme.ACCENT_GREEN if fps >= 50
                    else theme.SEV_WARNING if fps >= 30
                    else theme.SEV_CRITICAL)
         theme.draw_text(surface, f"FPS: {fps:.0f}",
-                        self._f_info, fps_col, self.rect.right - 95, 12)
+                        self._f_info, fps_col, self.rect.right - 90, 11)
 
 
 # ======================================================================
-# Left panel — controls
+# Left panel — controls + legend
 # ======================================================================
 
 class LeftPanel:
-    """Left sidebar with simulation controls, speed/weather selectors, and stats."""
+    """Left sidebar with simulation controls, speed/weather selectors, stats, and legend."""
 
     WIDTH = 220
 
@@ -140,27 +154,27 @@ class LeftPanel:
         h  = window_height - top_h - bottom_h
         self.rect = pygame.Rect(0, y0, self.WIDTH, h)
 
-        self._f_h  = theme.get_font(17)
-        self._f    = theme.get_font(15)
-        self._f_sm = theme.get_font(13)
+        self._f_h  = theme.get_font(18)
+        self._f    = theme.get_font(16)
+        self._f_sm = theme.get_font(15)
 
         bx = self.rect.x + 8
         bw = 95
         bh = 30
 
-        # Main control buttons
+        # Main control buttons — clearly distinct colors
         self.buttons: List[Button] = [
-            Button(pygame.Rect(bx,        y0 + 33, bw, bh), "START",  "start",  theme.ACCENT_GREEN),
-            Button(pygame.Rect(bx + bw + 8, y0 + 33, bw, bh), "PAUSE",  "pause",  (60, 80, 130)),
-            Button(pygame.Rect(bx,        y0 + 70, bw, bh), "RESET",  "reset",  (90, 45, 45)),
-            Button(pygame.Rect(bx + bw + 8, y0 + 70, bw, bh), "DEMO",   "demo",   theme.ACCENT_ORANGE),
+            Button(pygame.Rect(bx,          y0 + 33, bw, bh), "START",  "start",  theme.BTN_START),
+            Button(pygame.Rect(bx + bw + 6, y0 + 33, bw, bh), "PAUSE",  "pause",  theme.BTN_PAUSE),
+            Button(pygame.Rect(bx,          y0 + 68, bw, bh), "RESET",  "reset",  theme.BTN_RESET),
+            Button(pygame.Rect(bx + bw + 6, y0 + 68, bw, bh), "DEMO",   "demo",   theme.BTN_DEMO),
         ]
 
         # Speed toggle buttons
         spd_bw = 44
         self.speed_buttons: List[Button] = [
             Button(
-                pygame.Rect(bx + i * (spd_bw + 4), y0 + 130, spd_bw, 26),
+                pygame.Rect(bx + i * (spd_bw + 4), y0 + 125, spd_bw, 26),
                 label, f"speed_{i}",
             )
             for i, (label, _) in enumerate(SPEEDS)
@@ -170,8 +184,8 @@ class LeftPanel:
         wbw = 47
         self.weather_buttons: List[Button] = [
             Button(
-                pygame.Rect(bx + i * (wbw + 3), y0 + 185, wbw, 26),
-                w[:4].capitalize(), f"weather_{i}",
+                pygame.Rect(bx + i * (wbw + 3), y0 + 178, wbw, 26),
+                w.capitalize(), f"weather_{i}",
             )
             for i, w in enumerate(WEATHERS)
         ]
@@ -187,23 +201,24 @@ class LeftPanel:
         for btn in self.buttons:
             btn.draw(surface)
 
-        # Speed section
         y0 = self.rect.y
+
+        # Speed section
         theme.draw_text(surface, "SPEED", self._f_sm, theme.TEXT_DIM,
-                        self.rect.x + 8, y0 + 116)
+                        self.rect.x + 8, y0 + 112)
         for i, btn in enumerate(self.speed_buttons):
-            btn.color = theme.ACCENT_BLUE if i == speed_idx else (40, 46, 68)
+            btn.color = theme.ACCENT_BLUE if i == speed_idx else (35, 40, 65)
             btn.draw(surface)
 
         # Weather section
         theme.draw_text(surface, "WEATHER", self._f_sm, theme.TEXT_DIM,
-                        self.rect.x + 8, y0 + 171)
+                        self.rect.x + 8, y0 + 163)
         for i, btn in enumerate(self.weather_buttons):
-            btn.color = (70, 115, 175) if WEATHERS[i] == sim.weather else (40, 46, 68)
+            btn.color = (60, 110, 185) if WEATHERS[i] == sim.weather else (35, 40, 65)
             btn.draw(surface)
 
         # Live stats
-        y = y0 + 222
+        y = y0 + 216
         pygame.draw.line(surface, theme.PANEL_BORDER,
                          (self.rect.x + 6, y), (self.rect.right - 6, y))
         y += 6
@@ -224,28 +239,24 @@ class LeftPanel:
                             self.rect.x + 120, y)
             y += 20
 
-        # Hotkey reference at the bottom
-        y = self.rect.bottom - 155
+        # Map legend
+        y += 4
         pygame.draw.line(surface, theme.PANEL_BORDER,
                          (self.rect.x + 6, y), (self.rect.right - 6, y))
-        y += 4
-        hotkeys = [
-            "F1  Toggle help",
-            "F2  Toggle stats",
-            "F3  Cycle speed",
-            "F4  Cycle weather",
-            "F9  Demo mode",
-            "ESC  Quit",
-            "",
-            "LMB  Select / ignite",
-            "RMB drag  Pan map",
-            "Wheel  Zoom map",
-        ]
-        for hk in hotkeys:
-            if hk:
-                theme.draw_text(surface, hk, self._f_sm, theme.TEXT_DIM,
-                                self.rect.x + 8, y)
-            y += 14
+        y += 5
+        theme.draw_text(surface, "MAP LEGEND", self._f_sm, theme.TEXT_SECONDARY,
+                        self.rect.x + 8, y)
+        y += 18
+        swatch_size = 12
+        for lbl, col in LEGEND:
+            # Colored swatch
+            pygame.draw.rect(surface, col,
+                             pygame.Rect(self.rect.x + 8, y + 1, swatch_size, swatch_size))
+            pygame.draw.rect(surface, theme.PANEL_BORDER,
+                             pygame.Rect(self.rect.x + 8, y + 1, swatch_size, swatch_size), 1)
+            theme.draw_text(surface, lbl, self._f_sm, theme.TEXT_PRIMARY,
+                            self.rect.x + 24, y)
+            y += 16
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         for btn in self._all_btns:
@@ -280,9 +291,9 @@ class RightPanel:
         h  = window_height - top_h - bottom_h
         self.rect = pygame.Rect(window_width - self.WIDTH, y0, self.WIDTH, h)
 
-        self._f_h  = theme.get_font(17)
-        self._f    = theme.get_font(15)
-        self._f_sm = theme.get_font(13)
+        self._f_h  = theme.get_font(18)
+        self._f    = theme.get_font(16)
+        self._f_sm = theme.get_font(15)
 
     # ------------------------------------------------------------------
 
@@ -295,7 +306,7 @@ class RightPanel:
         theme.draw_panel(surface, self.rect)
         theme.draw_panel_header(surface, self.rect, "INSPECTOR", self._f_h)
 
-        y = self.rect.y + 32
+        y = self.rect.y + 34
 
         # --- Selected cell info ---
         if selected_cell:
@@ -320,11 +331,11 @@ class RightPanel:
                           else theme.TEXT_PRIMARY)
                     theme.draw_text(surface, val, self._f_sm, vc,
                                     self.rect.x + 100, y)
-                    y += 17
+                    y += 19
         else:
             theme.draw_text(surface, "Click map to select", self._f_sm,
                             theme.TEXT_DIM, self.rect.x + 8, y)
-            y += 18
+            y += 20
 
         y += 4
         pygame.draw.line(surface, theme.PANEL_BORDER,
@@ -334,7 +345,7 @@ class RightPanel:
         # --- Unit status list ---
         theme.draw_text(surface, "UNITS", self._f_sm, theme.TEXT_SECONDARY,
                         self.rect.x + 8, y)
-        y += 17
+        y += 18
 
         _state_color = {
             TruckState.IDLE:          theme.TRUCK_IDLE,
@@ -342,7 +353,7 @@ class RightPanel:
             TruckState.EXTINGUISHING: theme.TRUCK_EXTINGUISHING,
             TruckState.RETURNING:     theme.TRUCK_RETURNING,
         }
-        chart_top = self.rect.bottom - 140
+        chart_top = self.rect.bottom - 142
         for truck in sim.trucks:
             if y >= chart_top - 4:
                 break
@@ -355,11 +366,11 @@ class RightPanel:
                 self.rect.x + 8,
                 y,
             )
-            y += 15
+            y += 16
 
         # --- Mini chart: active fires over time ---
         chart_margin = 8
-        chart_h = 130
+        chart_h = 132
         chart_rect = pygame.Rect(
             self.rect.x + chart_margin,
             self.rect.bottom - chart_h - chart_margin,
@@ -381,19 +392,19 @@ class RightPanel:
         pygame.draw.rect(surface, theme.PANEL_BORDER, chart_rect, 1, border_radius=3)
 
         theme.draw_text(surface, "Active Fires / Time", self._f_sm, theme.TEXT_SECONDARY,
-                        chart_rect.x + 4, chart_rect.y + 3)
+                        chart_rect.x + 4, chart_rect.y + 4)
 
         data = sim.active_fires_history
         if not data:
-            theme.draw_text(surface, "Waiting for data...", self._f_sm, theme.TEXT_DIM,
+            theme.draw_text(surface, "Waiting...", self._f_sm, theme.TEXT_DIM,
                             chart_rect.x + 4, chart_rect.centery - 6)
             return
 
         # Chart drawing area (below label)
         ca_x = chart_rect.x + 4
-        ca_y = chart_rect.y + 18
+        ca_y = chart_rect.y + 20
         ca_w = chart_rect.width - 8
-        ca_h = chart_rect.height - 24
+        ca_h = chart_rect.height - 26
         max_val = max(max(data), 1)
 
         # Faint horizontal grid lines
@@ -414,13 +425,10 @@ class RightPanel:
         if len(points) >= 2:
             # Filled area
             fill_pts = [(ca_x, ca_y + ca_h)] + points + [(points[-1][0], ca_y + ca_h)]
-            # Draw on a temporary surface for alpha blending
             tmp = pygame.Surface((chart_rect.width, chart_rect.height), pygame.SRCALPHA)
             adj = [(p[0] - chart_rect.x, p[1] - chart_rect.y) for p in fill_pts]
-            pygame.draw.polygon(tmp, (220, 80, 40, 55), adj)
+            pygame.draw.polygon(tmp, (220, 80, 40, 60), adj)
             surface.blit(tmp, chart_rect.topleft)
-
-            # Line on top
             pygame.draw.lines(surface, theme.SEV_WARNING, False, points, 2)
         elif len(points) == 1:
             pygame.draw.circle(surface, theme.SEV_WARNING, points[0], 3)
@@ -429,7 +437,7 @@ class RightPanel:
         cur = data[-1]
         val_col = theme.SEV_CRITICAL if cur > 0 else theme.ACCENT_GREEN
         theme.draw_text(surface, str(cur), self._f_sm, val_col,
-                        chart_rect.right - 22, chart_rect.y + 3)
+                        chart_rect.right - 22, chart_rect.y + 4)
 
 
 # ======================================================================
@@ -443,18 +451,18 @@ class BottomPanel:
 
     def __init__(self, window_width: int, window_height: int) -> None:
         self.rect = pygame.Rect(0, window_height - self.HEIGHT, window_width, self.HEIGHT)
-        self._f_h  = theme.get_font(16)
-        self._f    = theme.get_font(14)
+        self._f_h  = theme.get_font(18)
+        self._f    = theme.get_font(15)
 
     def draw(self, surface: pygame.Surface, events: List[SimEvent]) -> None:
         theme.draw_panel(surface, self.rect)
         theme.draw_panel_header(surface, self.rect, "EVENT LOG", self._f_h)
 
-        row_h = 16
-        visible = (self.rect.height - 30) // row_h
+        row_h = 17
+        visible = (self.rect.height - 32) // row_h
         recent = events[-visible:] if len(events) > visible else events
 
-        y = self.rect.y + 29
+        y = self.rect.y + 32
         for evt in recent:
             sev_col = {
                 Severity.CRITICAL: theme.SEV_CRITICAL,
@@ -466,9 +474,9 @@ class BottomPanel:
             theme.draw_text(surface, f"[{mm:02d}:{ss:02d}]", self._f, theme.TEXT_DIM,
                             self.rect.x + 8, y)
             theme.draw_text(surface, f"[{evt.type.value}]", self._f, sev_col,
-                            self.rect.x + 68, y)
+                            self.rect.x + 70, y)
             theme.draw_text(surface, evt.message, self._f, theme.TEXT_SECONDARY,
-                            self.rect.x + 215, y)
+                            self.rect.x + 210, y)
             y += row_h
 
 
@@ -480,11 +488,11 @@ class HelpOverlay:
     """Full-screen semi-transparent help modal."""
 
     def __init__(self, window_width: int, window_height: int) -> None:
-        w, h = 500, 400
+        w, h = 520, 420
         self.rect = pygame.Rect((window_width - w) // 2, (window_height - h) // 2, w, h)
         self.visible = False
-        self._f_h = theme.get_font(21)
-        self._f   = theme.get_font(16)
+        self._f_h = theme.get_font(22)
+        self._f   = theme.get_font(17)
 
     def toggle(self) -> None:
         self.visible = not self.visible
@@ -501,7 +509,7 @@ class HelpOverlay:
         theme.draw_panel(surface, self.rect, bg=(26, 30, 50))
         theme.draw_panel_header(surface, self.rect, "HELP   (F1 to close)", self._f_h)
 
-        y = self.rect.y + 36
+        y = self.rect.y + 38
         entries = [
             ("F1",         "Toggle this help overlay"),
             ("F2",         "Toggle stats HUD"),
@@ -521,13 +529,13 @@ class HelpOverlay:
         ]
         for key, desc in entries:
             if not key:
-                y += 5
+                y += 6
                 continue
             theme.draw_text(surface, key,  self._f, theme.ACCENT_BLUE,
                             self.rect.x + 16, y)
             theme.draw_text(surface, desc, self._f, theme.TEXT_PRIMARY,
-                            self.rect.x + 145, y)
-            y += 21
+                            self.rect.x + 150, y)
+            y += 22
 
 
 # ======================================================================
@@ -538,10 +546,10 @@ class StatsOverlay:
     """Small floating HUD with live stats."""
 
     def __init__(self, map_x: int, map_y: int) -> None:
-        self.rect = pygame.Rect(map_x + 6, map_y + 6, 230, 110)
+        self.rect = pygame.Rect(map_x + 6, map_y + 6, 240, 115)
         self.visible = True
-        self._f_h = theme.get_font(16)
-        self._f   = theme.get_font(14)
+        self._f_h = theme.get_font(17)
+        self._f   = theme.get_font(15)
 
     def toggle(self) -> None:
         self.visible = not self.visible
@@ -550,10 +558,10 @@ class StatsOverlay:
         if not self.visible:
             return
 
-        theme.draw_panel(surface, self.rect, bg=(18, 20, 35))
+        theme.draw_panel(surface, self.rect, bg=(18, 20, 38))
         theme.draw_panel_header(surface, self.rect, "STATS", self._f_h)
 
-        y = self.rect.y + 29
+        y = self.rect.y + 32
         rows = [
             ("FPS",          f"{fps:.0f}"),
             ("Sim Time",     f"{sim.sim_time:.1f}s"),
@@ -564,5 +572,5 @@ class StatsOverlay:
             theme.draw_text(surface, f"{lbl}:", self._f, theme.TEXT_DIM,
                             self.rect.x + 8, y)
             theme.draw_text(surface, val, self._f, theme.TEXT_PRIMARY,
-                            self.rect.x + 120, y)
+                            self.rect.x + 130, y)
             y += 19

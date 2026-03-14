@@ -1,57 +1,44 @@
-# GRP_36 Disaster Response Simulator (Final Delivery)
+# GRP_36 Disaster Response Simulator — Task 1
 
-A real-time, interactive disaster response simulator that models **urban fire incidents**, **rescue dispatch**, and **environment effects**, with a modern visualization layer and smooth animation.
-
-This folder (`task1_oop_application/src`) is the **final delivery codebase** for Task 1.
-The legacy `Task 1/` directory in the repository is a **pre-submission archive** and is no longer the main entry point.
+A real-time, interactive disaster fire-response simulator modelled on Hong Kong's
+**Hung Hom (红磡)** district, built with Python and pygame.
 
 ---
 
-## Key Features
+## How to Run
 
-- **Modern visualization loop** (Pygame-based rendering)
-- **Smooth animations** (interpolation instead of jump updates)
-- **Responsive interaction**
-  - ESC: in-app menu (pause / reset / exit)
-  - F1: help panel (all shortcuts)
-  - F2: live statistics panel (fires, vehicles, weather, sim speed, FPS)
-  - F3: simulation speed toggle (1x / 2x / 4x / 8x)
-  - F4: weather mode toggle (sun / rain / wind / snow)
-  - Hover: building tooltip (ID, fire level, rescue status)
-  - Click: manually trigger rescue dispatch (emergency intervention)
-- **No garbled text policy**
-  - UTF-8 source files
-  - Fonts preloaded at startup (no runtime stutter / encoding crashes)
-- **Stability-first**
-  - Defensive error handling
-  - Errors written to `log.txt` for debugging
-
----
-
-## Requirements
-
-- Python **3.12**
-- Dependencies (installed via `requirements.txt` at repo root in the final package):
-  - `pygame`
-  - `pygame_gui` (used for modern UI widgets)
-
-> Note: If `pygame_gui` is not available on the target machine, the UI layer can be replaced with pure Pygame widgets.
-> This final delivery targets a modern, polished UI using `pygame_gui`.
-
----
-
-## How to Run (Recommended)
-
-From the **repository root**, run:
+From the **repository root**:
 
 ```bash
+pip install -r requirements.txt
 python -m task1_oop_application.src.main
 ```
 
-Why module mode?
-- It enforces a clean package structure
-- Imports are consistent
-- It matches a professional Python project layout
+The window opens at **1100 × 650** pixels — designed to fit a 14-inch laptop
+(1366 × 768 resolution) comfortably.
+
+---
+
+## Features
+
+- **Hung Hom district map** — irregular road network inspired by real Hung Hom
+  streets (Hung Hom Road, Ma Tau Wai Road, Gillies Avenue South, etc.);
+  Victoria Harbour waterfront to the south; Hong Kong PolyU campus area (commercial
+  zone) in the north-west; pocket parks and Hung Hom Promenade.
+- **Animated fire & smoke particle effects** — flickering orange/red fire particles
+  rise from burning cells; gray smoke drifts upward. Particle count and size scale
+  with fire intensity for a dramatic, clearly visible effect.
+- **Real-time fire spread** — fires spread to adjacent residential and commercial
+  buildings at a rate controlled by the active weather mode.
+- **Automatic truck dispatch** — A\* pathfinding routes the nearest idle fire truck
+  to each new fire; trucks extinguish the fire then return to their station.
+- **Manual fire ignition** — left-click any building on the map to start a fire.
+- **Speed control** — 1×, 2×, 4×, 8× simulation speed.
+- **Weather system** — sun (normal spread), rain (slow), wind (fast), snow (slow).
+- **Live statistics** — active fire count, deployed units, active-fires line chart.
+- **Map legend** — colour-coded legend for Road, Residential, Commercial, Park,
+  Fire Station, Water, and Fire.
+- **Event log** — scrolling panel showing timestamped simulation events.
 
 ---
 
@@ -59,91 +46,84 @@ Why module mode?
 
 | Key / Action | Function |
 |---|---|
-| ESC | Open main menu (start/pause/reset/exit/settings) |
-| F1 | Help panel (shortcuts + usage) |
-| F2 | Live statistics (fire count, vehicles, weather, speed, FPS) |
-| F3 | Toggle simulation speed (1x / 2x / 4x / 8x) |
-| F4 | Toggle weather mode (sun / rain / wind / snow) |
-| Mouse hover | Tooltip for the building under cursor |
-| Mouse click | Emergency intervention: request rescue dispatch to selected building |
+| **F1** | Toggle help overlay |
+| **F2** | Toggle stats HUD (top-left of map) |
+| **F3** | Cycle simulation speed (1×/2×/4×/8×) |
+| **F4** | Cycle weather (sun/rain/wind/snow) |
+| **F9** | Demo mode — auto-ignite 3 spread-out fires |
+| **ESC** | Quit |
+| **Left Click** (building) | Ignite building / select cell |
+| **Right Drag** | Pan the map |
+| **Mouse Wheel** | Zoom in / out |
+| **START** button | Start / resume simulation |
+| **PAUSE** button | Pause simulation |
+| **RESET** button | Reset everything |
+| **DEMO** button | Start demo scenario |
 
 ---
 
-## Architecture Overview (High-Level)
+## Architecture (4-layer OOP)
 
-This project is intentionally organized as a layered architecture:
-
-### 1) Simulation / Domain Layer (OOP)
-Models the world using Object-Oriented Design:
-- City / map entities
-- Buildings (flammable states, fire levels)
-- Rescue vehicles / emergency units
-- Weather system that affects the simulation (spread rate, visibility, etc.)
-
-### 2) Visualization Layer (Rendering Only)
-A renderer dedicated to drawing:
-- Uses `surface.blit()` and scaling for crisp visuals
-- Uses float-based intermediate coordinate calculations to avoid jitter
-- Supports selective redraw (dirty rectangles) to improve FPS
-
-### 3) UI Layer (Modern GUI)
-A UI manager dedicated to:
-- Buttons, panels, status bars
-- Clear feedback (hover highlight, button press animation)
-- Dynamic layout on window resize
-
-### 4) Animation Layer
-An animation controller responsible for:
-- Interpolated movement (linear or easing)
-- Independent animation tick rate
-- Pause / resume / speed scaling
-
----
-
-## UTF-8 / Font Policy (No Garbled Text)
-
-To ensure consistent text rendering across machines:
-- All `.py` files should begin with:
-
-```python
-# -*- coding: utf-8 -*-
 ```
-
-- Fonts are **preloaded** once at startup, e.g.:
-
-```python
-font_title = pygame.font.SysFont("Arial", 24, bold=True)
-font_small = pygame.font.SysFont("Arial", 16)
-```
-
-If Arial is not available, the application should fall back to another sans-serif font.
-
----
-
-## Project Structure (Final Target)
-
-```text
-task1_oop_application/
-  src/
+task1_oop_application/src/
+  core/                      Domain logic (no pygame)
     __init__.py
-    main.py
-    models/
-    simulation/
-    visualization/
-      gui_manager.py
-      renderer.py
-      animation_controller.py
-  tests/
+    world.py                 City grid — Hung Hom layout (CellType, Cell, World)
+    entities.py              FireStation, FireTruck, TruckState FSM
+    simulation.py            Simulation orchestrator (fire spread, dispatch, events)
+    events.py                SimEvent, EventType, Severity
+    pathfinding.py           A* + nearest-road BFS
+  render/                    Rendering layer
+    __init__.py
+    camera.py                Viewport pan & zoom
+    theme.py                 Colours, fonts, drawing helpers
+    renderer.py              Main map renderer (cells, fires, trucks, particles)
+    particles.py             Fire & smoke particle system
+  ui/                        Pure-pygame UI panels
+    __init__.py
+    panels.py                TopBar, LeftPanel, RightPanel, BottomPanel, overlays
+  models/                    Base OOP models
+    __init__.py
+    model_base.py
+  visualization/             Legacy (kept for reference)
+    gui_manager.py
+  __init__.py
+  main.py                    Entry point — wires all layers together
 ```
+
+### Layer responsibilities
+
+| Layer | Folder | Responsibility |
+|---|---|---|
+| **Domain** | `core/` | World state, fire simulation, pathfinding, event emission |
+| **Rendering** | `render/` | Drawing world cells, fire/smoke particles, trucks onto pygame Surface |
+| **UI** | `ui/` | Panels, buttons, overlays — pure pygame, no pygame_gui |
+| **Entry point** | `main.py` | pygame init, event loop, wires all layers |
 
 ---
 
-## Notes for Reviewers
+## Map — Hung Hom District Layout
 
-- `Task 1/` in this repository is a **pre-submission snapshot**.
-- The final codebase is `task1_oop_application/src`.
-- The recommended execution command is:
+The map is a **33 × 24** cell grid (at default zoom, each cell is 20 × 20 pixels).
 
-```bash
-python -m task1_oop_application.src.main
-```
+| Area | Cell Type | Colour |
+|---|---|---|
+| Streets / roads | Road | Gray |
+| Old Kowloon tenement blocks | Residential (Building) | Warm brown |
+| PolyU campus + hotels | Commercial | Steel blue |
+| Parks & promenade | Park | Vivid green |
+| Fire stations (3 total) | Station | Bright blue |
+| Victoria Harbour | Water | Deep blue |
+
+Road network key features:
+- **Major E-W**: Ma Tau Wai Road equivalent (y=0), Hung Hom Road (y=8), mid-level road (y=14), harbour road (y=20)
+- **Major N-S**: Chatham Road South (x=0), Gillies Avenue South (x=7), Bailey Street (x=21), eastern boundary (x=32)
+- Minor / short connectors add the irregular Kowloon block pattern
+
+---
+
+## Requirements
+
+- Python 3.10+
+- `pygame >= 2.5` (see `requirements.txt`)
+
