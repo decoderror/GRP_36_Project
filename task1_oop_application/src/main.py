@@ -33,8 +33,8 @@ from task1_oop_application.src.ui.panels import (
 # ------------------------------------------------------------------
 # Layout constants
 # ------------------------------------------------------------------
-WINDOW_W = 1280
-WINDOW_H = 760
+WINDOW_W = 1100
+WINDOW_H = 650
 
 TOP_H    = TopBar.HEIGHT          # 40
 BOTTOM_H = BottomPanel.HEIGHT     # 120
@@ -43,12 +43,12 @@ RIGHT_W  = RightPanel.WIDTH       # 220
 
 MAP_X = LEFT_W
 MAP_Y = TOP_H
-MAP_W = WINDOW_W - LEFT_W - RIGHT_W   # 840
-MAP_H = WINDOW_H - TOP_H - BOTTOM_H   # 600
+MAP_W = WINDOW_W - LEFT_W - RIGHT_W   # 660
+MAP_H = WINDOW_H - TOP_H - BOTTOM_H   # 490
 
 CELL_SIZE = 20
-GRID_W = MAP_W // CELL_SIZE   # 42
-GRID_H = MAP_H // CELL_SIZE   # 30
+GRID_W = MAP_W // CELL_SIZE   # 33
+GRID_H = MAP_H // CELL_SIZE   # 24
 
 
 # ------------------------------------------------------------------
@@ -126,8 +126,8 @@ def main() -> int:
                         cell = sim.world.get_cell(gx, gy)
                         if cell:
                             renderer.selected_cell = (gx, gy)
-                            # Left-clicking a building ignites it
-                            if cell.type == CellType.BUILDING and not cell.burning:
+                        # Left-clicking a building or commercial block ignites it
+                            if cell.type in (CellType.BUILDING, CellType.COMMERCIAL) and not cell.burning:
                                 sim.start_fire(gx, gy)
 
                     # Always pass click to left panel (handles buttons in sidebar)
@@ -158,7 +158,7 @@ def main() -> int:
         # ── Draw ─────────────────────────────────────────────────
         screen.fill(theme.BG_DARK)
 
-        renderer.draw(sim)
+        renderer.draw(sim, dt)
 
         top_bar.draw(
             screen,
@@ -198,6 +198,7 @@ def _handle_action(
         sim.reset()
         camera.center_on(sim.world_width, sim.world_height)
         renderer.selected_cell = None
+        renderer.particles.clear()
     elif action == "demo":
         if not sim.running:
             sim.start()

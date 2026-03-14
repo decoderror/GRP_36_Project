@@ -1,4 +1,8 @@
-# models/__init__.py
+# -*- coding: utf-8 -*-
+"""
+models — Base OOP model classes.
 
-# Initialization for models package
-
+Provides abstract base classes and shared model utilities used
+across the simulation domain layer.
+  model_base.py   SimulationModel base class
+"""

@@ -135,7 +135,8 @@ class Simulation:
         for x in range(self.world_width):
             for y in range(self.world_height):
                 c = self.world.get_cell(x, y)
-                if c and c.type == CellType.BUILDING and not c.burning:
+                if (c and c.type in (CellType.BUILDING, CellType.COMMERCIAL)
+                        and not c.burning):
                     buildings.append((x, y))
 
         self._rng.shuffle(buildings)
@@ -156,9 +157,10 @@ class Simulation:
     # ------------------------------------------------------------------
 
     def start_fire(self, gx: int, gy: int) -> bool:
-        """Ignite a building cell. Returns True if successful."""
+        """Ignite a building or commercial cell. Returns True if successful."""
         cell = self.world.get_cell(gx, gy)
-        if cell and cell.type == CellType.BUILDING and not cell.burning:
+        if (cell and cell.type in (CellType.BUILDING, CellType.COMMERCIAL)
+                and not cell.burning):
             cell.burning = True
             cell.fire_intensity = 0.3
             self._emit(SimEvent(
@@ -246,7 +248,7 @@ class Simulation:
                     nb = self.world.get_cell(nx, ny)
                     if (
                         nb
-                        and nb.type == CellType.BUILDING
+                        and nb.type in (CellType.BUILDING, CellType.COMMERCIAL)
                         and not nb.burning
                         and self._rng.random() < 0.35
                     ):
