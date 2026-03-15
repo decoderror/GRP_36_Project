@@ -1,8 +1,8 @@
-# Dependencies for task1_oop_application (GUI)
+# Dependencies for the Disaster Response Simulator (task1_oop_application)
 
 pygame==2.6.1
 pygame_gui==0.6.14
 
-# Common transitive deps (usually installed automatically, pinned here for stability)
+# Transitive dependencies (usually installed automatically, pinned for stability)
 numpy>=1.26,<3
 typing_extensions>=4.8

@@ -3,13 +3,14 @@
 World / Grid layer.
 
 Generates a city grid with roads, buildings, parks, and fire stations.
+Each road is assigned an English street name.
 Pure domain logic — no pygame imports.
 """
 from __future__ import annotations
 
 import random
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class CellType(Enum):
@@ -39,6 +40,25 @@ class Cell:
         self.building_hp: float = 100.0 if cell_type == CellType.BUILDING else 0.0
 
 
+# ------------------------------------------------------------------
+# English road name pools
+# ------------------------------------------------------------------
+
+# Vertical roads (North-South) — "Avenues" and "Streets"
+_VERTICAL_ROAD_NAMES: List[str] = [
+    "Main St", "Oak Ave", "Elm St", "Park Ave", "Cedar Blvd",
+    "Maple Dr", "Pine St", "Lake Ave", "River Rd", "Hill St",
+    "Broad St", "King Ave", "Union St", "Grove Ave", "Spring Rd",
+]
+
+# Horizontal roads (East-West) — numbered or named
+_HORIZONTAL_ROAD_NAMES: List[str] = [
+    "1st Ave", "2nd Ave", "3rd Ave", "4th Ave", "5th Ave",
+    "6th Ave", "7th Ave", "8th Ave", "9th Ave", "10th Ave",
+    "11th Ave", "12th Ave", "13th Ave", "14th Ave", "15th Ave",
+]
+
+
 class World:
     """
     City grid.
@@ -46,6 +66,7 @@ class World:
     Road layout: horizontal and vertical roads every ROAD_INTERVAL cells.
     Buildings fill the blocks between roads.
     Fire stations are placed at selected road intersections.
+    Each road is assigned an English street name.
     """
 
     ROAD_INTERVAL: int = 7
@@ -56,6 +77,11 @@ class World:
         self.seed: int = seed
         self.cells: List[List[Cell]] = []
         self.stations: List[Tuple[int, int]] = []
+
+        # Road name maps: column index -> name (vertical), row index -> name (horizontal)
+        self.vertical_road_names: Dict[int, str] = {}
+        self.horizontal_road_names: Dict[int, str] = {}
+
         self._generate(seed)
 
     # ------------------------------------------------------------------
@@ -84,6 +110,19 @@ class World:
                         self.cells[x][y].type = CellType.PARK
                     else:
                         self.cells[x][y].type = CellType.EMPTY
+
+        # Assign English road names
+        v_idx = 0
+        for x in range(0, self.width, interval):
+            name = _VERTICAL_ROAD_NAMES[v_idx % len(_VERTICAL_ROAD_NAMES)]
+            self.vertical_road_names[x] = name
+            v_idx += 1
+
+        h_idx = 0
+        for y in range(0, self.height, interval):
+            name = _HORIZONTAL_ROAD_NAMES[h_idx % len(_HORIZONTAL_ROAD_NAMES)]
+            self.horizontal_road_names[y] = name
+            h_idx += 1
 
         # Place fire stations at road intersections
         intersections: List[Tuple[int, int]] = []

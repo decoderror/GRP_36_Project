@@ -29,8 +29,8 @@ SPEEDS = [("1x", 1.0), ("2x", 2.0), ("4x", 4.0), ("8x", 8.0)]
 # Weather cycle
 WEATHERS = ["sun", "rain", "wind", "snow"]
 
-# Weather display labels
-WEATHER_LABELS = {"sun": "☀ Sun", "rain": "☂ Rain", "wind": "~ Wind", "snow": "* Snow"}
+# Weather display labels (ASCII-safe for the built-in bitmap font)
+WEATHER_LABELS = {"sun": "Sun", "rain": "Rain", "wind": "Wind", "snow": "Snow"}
 
 
 # ======================================================================
@@ -507,7 +507,7 @@ class HelpOverlay:
             ("F2",         "Toggle stats HUD"),
             ("F3",         "Cycle simulation speed"),
             ("F4",         "Cycle weather"),
-            ("F9",         "Demo mode – auto scenario"),
+            ("F9",         "Demo mode - auto scenario"),
             ("ESC",        "Quit"),
             ("",           ""),
             ("Left Click", "Select cell  /  ignite building"),
