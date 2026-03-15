@@ -158,7 +158,7 @@ def main() -> int:
         # ── Draw ─────────────────────────────────────────────────
         screen.fill(theme.BG_DARK)
 
-        renderer.draw(sim)
+        renderer.draw(sim, dt)
 
         top_bar.draw(
             screen,

@@ -2,8 +2,9 @@
 """
 Rendering layer.
 
-Draws the simulation world, fires, fire-truck paths, and units
-onto a pygame Surface, clipped to the map viewport.
+Draws the simulation world, fires, fire-truck paths, units,
+road name labels, and weather particle effects onto a pygame Surface,
+clipped to the map viewport.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from task1_oop_application.src.core.entities import FireTruck, TruckState
 from task1_oop_application.src.core.simulation import Simulation
 from task1_oop_application.src.render.camera import Camera
 from task1_oop_application.src.render import theme
+from task1_oop_application.src.render.particles import ParticleSystem
 
 
 class Renderer:
@@ -31,12 +33,13 @@ class Renderer:
         self.viewport = viewport
         self.camera = camera
         self.selected_cell: Optional[Tuple[int, int]] = None
+        self.particle_system = ParticleSystem(viewport)
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def draw(self, sim: Simulation) -> None:
+    def draw(self, sim: Simulation, dt: float = 0.016) -> None:
         """Draw all world layers, clipped to the viewport."""
         old_clip = self.surface.get_clip()
         self.surface.set_clip(self.viewport)
@@ -45,6 +48,7 @@ class Renderer:
         pygame.draw.rect(self.surface, (18, 20, 30), self.viewport)
 
         self._draw_cells(sim.world)
+        self._draw_road_names(sim.world)
         self._draw_fires(sim.world)
 
         # Draw path overlays for moving trucks
@@ -60,6 +64,10 @@ class Renderer:
         # Selection highlight
         if self.selected_cell:
             self._draw_selection(self.selected_cell)
+
+        # Weather particle effects
+        self.particle_system.update(dt, sim.weather)
+        self.particle_system.draw(self.surface, sim.weather)
 
         # Viewport border
         pygame.draw.rect(self.surface, theme.PANEL_BORDER, self.viewport, 1)
@@ -110,6 +118,40 @@ class Renderer:
                                      (ctr[0] - arm, ctr[1]), (ctr[0] + arm, ctr[1]), 2)
                     pygame.draw.line(self.surface, (180, 255, 180),
                                      (ctr[0], ctr[1] - arm), (ctr[0], ctr[1] + arm), 2)
+
+    def _draw_road_names(self, world: World) -> None:
+        """Draw English road name labels along the roads."""
+        cs = self.camera.cell_pixel_size()
+        if cs < 6:
+            return  # too zoomed out for readable labels
+
+        font_size = max(10, min(14, cs))
+        font = theme.get_font(font_size)
+        label_color = (130, 145, 170)
+
+        vp = self.viewport
+
+        # Draw vertical road names (along columns)
+        for col_x, name in world.vertical_road_names.items():
+            sx, _ = self.camera.world_to_screen(col_x, 0)
+            if sx < vp.x - 50 or sx > vp.right + 50:
+                continue
+            # Place label near the top of the visible area
+            label_y = vp.y + 8
+            surf = font.render(name, True, label_color)
+            # Rotate for vertical display
+            rotated = pygame.transform.rotate(surf, 90)
+            self.surface.blit(rotated, (sx + 1, label_y))
+
+        # Draw horizontal road names (along rows)
+        for row_y, name in world.horizontal_road_names.items():
+            _, sy = self.camera.world_to_screen(0, row_y)
+            if sy < vp.y - 20 or sy > vp.bottom + 20:
+                continue
+            # Place label near the left edge of the visible area
+            label_x = vp.x + 4
+            surf = font.render(name, True, label_color)
+            self.surface.blit(surf, (label_x, sy + 1))
 
     def _draw_fires(self, world: World) -> None:
         cs = self.camera.cell_pixel_size()
