@@ -125,7 +125,7 @@ class Simulation:
 
     def set_weather(self, weather: str) -> None:
         self.weather = weather
-        self._emit(SimEvent(EventType.WEATHER_CHANGED, f"Weather → {weather}", Severity.INFO))
+        self._emit(SimEvent(EventType.WEATHER_CHANGED, f"Weather -> {weather}", Severity.INFO))
 
     def demo_mode(self) -> None:
         """Start 3 fires in spread-out locations to showcase the system."""
@@ -202,7 +202,7 @@ class Simulation:
             best_truck.dispatch(path, fire_gx, fire_gy)
             self._emit(SimEvent(
                 EventType.UNIT_DISPATCHED,
-                f"Truck {best_truck.id} → ({fire_gx},{fire_gy})",
+                f"Truck {best_truck.id} -> ({fire_gx},{fire_gy})",
                 Severity.WARNING,
             ))
 

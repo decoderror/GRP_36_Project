@@ -3,7 +3,7 @@
 Particle effects for weather visualization.
 
 Renders animated particles for rain, snow, and wind effects
-on the map viewport. Each weather type has distinct visual behaviour:
+on the map viewport. Each weather type has distinct visual behavior:
   - rain:  fast blue droplets falling at an angle
   - snow:  slow white flakes drifting with gentle horizontal sway
   - wind:  fast horizontal streaks / dust motes
@@ -284,8 +284,8 @@ class ParticleSystem:
         vy = rng.uniform(-20, 20)
         life = rng.uniform(0.8, 2.0)
         size = rng.uniform(1.0, 1.5)
-        grey = rng.randint(140, 200)
-        color = (grey, grey + rng.randint(-10, 10), grey + rng.randint(-5, 15))
+        gray = rng.randint(140, 200)
+        color = (gray, gray + rng.randint(-10, 10), gray + rng.randint(-5, 15))
         alpha = rng.randint(80, 160)
         return Particle(x, y, vx, vy, life, size, color, alpha)
 
