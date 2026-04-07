@@ -9,7 +9,7 @@
 ---
 ## 🎥 Task 2 Video
 
-[![Open Task 2 Video](https://img.shields.io/badge/Video-Task%202-brightgreen?style=for-the-badge)](TASK_2/task2_video.mp4)
+[![Task 2 Video](https://img.shields.io/badge/Video-Task%202-brightgreen?style=for-the-badge)](https://github.com/decoderror/GRP_36_Project/blob/1586fa701d4f55747269bbabead950abf0ed3273/TASK_2/task2_video.mp4)
 
 > Click the button above！！！If GitHub cannot play the video directly, click **“View raw”** on GitHub to download or play it.
 
