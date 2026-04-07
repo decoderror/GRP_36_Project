@@ -5,7 +5,7 @@ A real-time, interactive disaster response simulator that models **urban fire in
 This folder (`task1_oop_application/src`) is the **final delivery codebase** for Task 1.
 ## 🎥 Task 1 Video
 
-[![Open Task 1 Video](https://img.shields.io/badge/Video-Task%201-brightgreen?style=for-the-badge)](TASK_1/task1_video.mp4)
+[![Task 1 Video](https://img.shields.io/badge/Video-Task%201-brightgreen?style=for-the-badge)](https://github.com/decoderror/GRP_36_Project/blob/1586fa701d4f55747269bbabead950abf0ed3273/TASK_1/task1_video.mp4)
 
 > Click the button above！！！If GitHub cannot play the video directly, click **“View raw”** on GitHub to download or play it.
 
