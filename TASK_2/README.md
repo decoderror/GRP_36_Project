@@ -7,6 +7,11 @@
 - **Application Scenario:** Currency exchange **arbitrage detection**
 
 ---
+## 🎥 Task 2 Video
+
+[![Open Task 2 Video](https://img.shields.io/badge/Video-Task%202-brightgreen?style=for-the-badge)](TASK_2/task2_video.mp4)
+
+> Click the button above！！！If GitHub cannot play the video directly, click **“View raw”** on GitHub to download or play it.
 
 ## 1. Problem Background: What Is Currency Arbitrage?
 
