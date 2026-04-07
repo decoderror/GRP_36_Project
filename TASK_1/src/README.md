@@ -112,8 +112,6 @@ task1_oop_application/
 ---
 
 ## Notes
-
-- All code and documentation is in English.
 - UI uses modern styles (rounded panels, gradients, overlays, live popups).
 - See source code for integration details and extensibility.
 ```
